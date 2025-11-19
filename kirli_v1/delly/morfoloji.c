@@ -1,25 +1,22 @@
-#include "morfoloji.h"
 #include <stdio.h>
 #include <string.h>
+#include "morfoloji.h"
 
-void morfolojik_cozumle(const unsigned char* metin)
+void morfoloji_coz(const char* metin)
 {
-    // Çok basit þablon
-    printf("[MORFO] Kök+Ek analizi: ");
+    printf("[MORFO] Kelime: %s\n", metin);
 
-    // Örnek: son 3 byte ? ek varsayýyoruz
-    int len = strlen((const char*)metin);
+    int len = strlen(metin);
 
-    if (len <= 3) {
-        printf("kök=%s ek=YOK\n", metin);
-        return;
+    if (len > 3) {
+        printf("[MORFO] Kök: ");
+        for (int i = 0; i < len - 2; i++)
+            putchar(metin[i]);
+
+        printf("\n[MORFO] Ek: %c%c\n", metin[len - 2], metin[len - 1]);
     }
-
-    printf("kök=");
-    for (int i = 0; i < len - 3; i++) printf("%c", metin[i]);
-
-    printf(" ek=");
-    for (int i = len - 3; i < len; i++) printf("%c", metin[i]);
-
-    printf("\n");
+    else {
+        printf("[MORFO] Kök: %s\n", metin);
+        printf("[MORFO] Ek yok.\n");
+    }
 }

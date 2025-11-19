@@ -1,8 +1,15 @@
-#include "kirli_core.h"
+#include <stdlib.h>
 #include <stdio.h>
+#include "kirli_core.h"
+
+// DELLY beyin modülleri
+#include "../delly/morfoloji.h"
+#include "../delly/anlam.h"
+#include "../delly/sozdizimi.h"
+#include "../delly/bellek/bellek.h"
 
 extern unsigned char RAM[];
-extern unsigned int PS;
+extern unsigned int  PS;
 extern unsigned char A, B, C, D, Z;
 
 void op_no_op()
@@ -12,52 +19,49 @@ void op_no_op()
 
 void op_al()
 {
-    unsigned char reg = RAM[PS + 1];
-    unsigned char val = RAM[PS + 2];
+    unsigned char r = RAM[PS + 1];
+    unsigned char v = RAM[PS + 2];
 
-    switch (reg) {
-    case 0: A = val; break;
-    case 1: B = val; break;
-    case 2: C = val; break;
-    case 3: D = val; break;
+    switch (r) {
+    case 0: A = v; break;
+    case 1: B = v; break;
+    case 2: C = v; break;
+    case 3: D = v; break;
     }
-    Z = (val == 0);
+
+    Z = (v == 0);
     PS += 3;
 }
 
 void op_ekle()
 {
-    unsigned char r1 = RAM[PS + 1];
-    unsigned char r2 = RAM[PS + 2];
-
-    unsigned char* x;
-
-    switch (r1) {
-    case 0: x = &A; break;
-    case 1: x = &B; break;
-    case 2: x = &C; break;
-    case 3: x = &D; break;
-    default: x = &A;
+    unsigned char* hedef;
+    switch (RAM[PS + 1]) {
+    case 0: hedef = &A; break;
+    case 1: hedef = &B; break;
+    case 2: hedef = &C; break;
+    case 3: hedef = &D; break;
+    default: hedef = &A; break;
     }
 
-    unsigned char val;
-
-    switch (r2) {
-    case 0: val = A; break;
-    case 1: val = B; break;
-    case 2: val = C; break;
-    case 3: val = D; break;
-    default: val = 0;
+    unsigned char v;
+    switch (RAM[PS + 2]) {
+    case 0: v = A; break;
+    case 1: v = B; break;
+    case 2: v = C; break;
+    case 3: v = D; break;
+    default: v = 0;
     }
 
-    *x = *x + val;
-    Z = (*x == 0);
+    *hedef += v;
+    Z = (*hedef == 0);
+
     PS += 3;
 }
 
 void op_metin()
 {
-    printf("[CPU] METÝN verisi: ");
+    printf("[ÝÞLEMCÝ] METÝN: ");
 
     int i = PS + 1;
     while (RAM[i] != 0) {
@@ -66,19 +70,31 @@ void op_metin()
     }
     printf("\n");
 
-    // metin sonunu bul
-    while (RAM[PS] != 0) PS++;
-    PS += 1;
+    // METÝN komutundan sonra PS'yi metnin sonuna taþý
+    int j = PS + 1;
+    while (RAM[j] != 0) j++;
+
+    PS = j + 1;
 }
 
 void op_morfo()
 {
-    printf("[CPU] MORFO analizi tetiklendi.\n");
+    printf("[ÝÞLEMCÝ] MORFO tetiklendi.\n");
+
+    // METÝN komutundan gelen son string RAM üzerinde hala duruyor
+    const char* m = (const char*)&RAM[PS + 1];
+
+    // DELLY BEYNÝ DEVREYE GÝRÝYOR
+    morfoloji_coz(m);
+    anlam_coz(m);
+    sozdizimi_coz(m);
+    bellek_yaz(m);
+
     PS += 1;
 }
 
 void op_bitir()
 {
-    printf("[CPU] Program bitti.\n");
-    PS += 1;
+    printf("[ÝÞLEMCÝ] Program bitti.\n");
+    exit(0);
 }

@@ -1,14 +1,20 @@
-#include "bellek.h"
+#include <stdio.h>
 #include <string.h>
+#include "bellek.h"
 
-unsigned char delly_bellek[4096];
+char bellek[10][256];
+int sayac = 0;
 
-void bellek_yaz(const unsigned char* d)
+void bellek_yaz(const char* m)
 {
-    strcpy((char*)delly_bellek, (const char*)d);
+    if (sayac < 10) {
+        strcpy(bellek[sayac], m);
+        sayac++;
+    }
 }
 
-const unsigned char* bellek_oku()
+void bellek_goster()
 {
-    return delly_bellek;
+    for (int i = 0; i < sayac; i++)
+        printf("[BELLEK] %d: %s\n", i + 1, bellek[i]);
 }

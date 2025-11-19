@@ -3,117 +3,104 @@
 #include <string.h>
 #include "tr_ascii/tr_char.h"
 
-typedef struct {
-    char ad[32];
-    int opcode;
-} KOMUT;
+// KÝRLÝ DERLEYÝCÝ
+// Türkçe komutlarý bellek.bin dosyasýna çevirir
 
-KOMUT komutlar[32];
-int komut_say = 0;
+#define OP_NOP     0
+#define OP_AL      1
+#define OP_EKLE    2
+#define OP_METIN   10
+#define OP_MORFO   11
+#define OP_BITIR   255
 
-void komut_yukle()
+void derle_dosya(const char* giris, const char* cikis)
 {
-    FILE* f = fopen("komutlar.trk", "r");
-    if (!f) {
-        printf("komutlar.trk bulunamadý!\n");
+    FILE* g = fopen(giris, "r");
+    if (!g) {
+        printf("Dosya bulunamadý: %s\n", giris);
         exit(1);
     }
 
-    while (!feof(f)) {
-        char a[32]; int k;
-        if (fscanf(f, "%s %d", a, &k) == 2) {
-            strcpy(komutlar[komut_say].ad, a);
-            komutlar[komut_say].opcode = k;
-            komut_say++;
-        }
+    FILE* o = fopen(cikis, "wb");
+    if (!o) {
+        printf("Çýkýþ dosyasý açýlamadý: %s\n", cikis);
+        exit(1);
     }
 
-    fclose(f);
-}
+    char komut[64];
 
-int opcode_bul(const char* s)
-{
-    for (int i = 0; i < komut_say; i++) {
-        if (strcmp(komutlar[i].ad, s) == 0)
-            return komutlar[i].opcode;
-    }
-    return -1;
-}
-
-void yaz_byte(FILE* o, unsigned char b)
-{
-    fwrite(&b, 1, 1, o);
-}
-
-void metin_derle(FILE* o, const char* metin)
-{
-    int i = 0;
-    while (metin[i]) {
-        int adv = 1;
-        unsigned char tr = tr_normalize(&metin[i], &adv);
-        fwrite(&tr, 1, 1, o);
-        i += adv;
-    }
-    unsigned char end = 0;
-    fwrite(&end, 1, 1, o);
-}
-
-int main(int argc, char** argv)
-{
-    if (argc < 2) {
-        printf("kullanim: kirli_asm dosya.krl\n");
-        return 0;
-    }
-
-    komut_yukle();
-
-    FILE* g = fopen(argv[1], "r");
-    if (!g) { printf("dosya yok\n"); return 1; }
-
-    FILE* o = fopen("../program.bin", "wb");
-
-    while (!feof(g))
+    while (fscanf(g, "%63s", komut) == 1)
     {
-        char komut[32];
-        if (fscanf(g, "%s", komut) != 1) break;
+        if (strcmp(komut, "AL") == 0) {
 
-        int op = opcode_bul(komut);
-        if (op < 0) {
+            unsigned char r, v;
+            if (fscanf(g, "%hhu %hhu", &r, &v) != 2) {
+                printf("AL komutu hatalý.\n");
+                exit(1);
+            }
+
+            fputc(OP_AL, o);
+            fputc(r, o);
+            fputc(v, o);
+        }
+
+        else if (strcmp(komut, "EKLE") == 0) {
+
+            unsigned char r1, r2;
+            if (fscanf(g, "%hhu %hhu", &r1, &r2) != 2) {
+                printf("EKLE komutu hatalý.\n");
+                exit(1);
+            }
+
+            fputc(OP_EKLE, o);
+            fputc(r1, o);
+            fputc(r2, o);
+        }
+
+        else if (strcmp(komut, "METIN") == 0 || strcmp(komut, "METÝN") == 0) {
+
+            char buf[256];
+            if (fscanf(g, " \"%255[^\"]\"", buf) != 1) {
+                printf("METÝN komutu hatalý.\n");
+                exit(1);
+            }
+
+            fputc(OP_METIN, o);
+
+            int i = 0;
+            while (buf[i]) {
+                int adv = 1;
+                unsigned char t = tr_normalize(&buf[i], &adv);
+                fputc(t, o);
+                i += adv;
+            }
+            fputc(0, o);
+        }
+
+        else if (strcmp(komut, "MORFO") == 0) {
+            fputc(OP_MORFO, o);
+        }
+
+        else if (strcmp(komut, "BITIR") == 0 || strcmp(komut, "BÝTÝR") == 0) {
+            fputc(OP_BITIR, o);
+        }
+
+        else {
             printf("Tanýnmayan komut: %s\n", komut);
             exit(1);
-        }
-
-        yaz_byte(o, (unsigned char)op);
-
-        if (strcmp(komut, "AL") == 0) {
-            int y, v;
-            fscanf(g, "%d %d", &y, &v);
-            yaz_byte(o, y);
-            yaz_byte(o, v);
-        }
-        else if (strcmp(komut, "EKLE") == 0) {
-            int a, b;
-            fscanf(g, "%d %d", &a, &b);
-            yaz_byte(o, a);
-            yaz_byte(o, b);
-        }
-        else if (strcmp(komut, "METIN") == 0) {
-            char buf[256];
-            fscanf(g, " \"%[^\"]\"", buf);
-            metin_derle(o, buf);
-        }
-        else if (strcmp(komut, "MORFO") == 0) {
-            yaz_byte(o, 0);
-        }
-        else if (strcmp(komut, "BITIR") == 0) {
-            // parametre yok
         }
     }
 
     fclose(g);
     fclose(o);
 
-    printf("Derleme tamam.\n");
+    printf("[DERLEYÝCÝ] %s oluþturuldu.\n", cikis);
+}
 
+int main()
+{
+    // Ana dizinden çalýþýyoruz
+    derle_dosya("programlar/test.krl", "bellek.bin");
     return 0;
 }
+
