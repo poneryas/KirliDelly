@@ -1,0 +1,6 @@
+AL 0 10
+AL 1 5
+EKLE 0 1
+METIN "geliyorum"
+MORFO
+BITIR
